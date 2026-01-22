@@ -1,0 +1,3 @@
+- Create MLP
+- Understand jvp and jpv and hessian with 'Deep Learning' or 'Autodiff cookbook'
+- Try using Docker for reproducibility.
