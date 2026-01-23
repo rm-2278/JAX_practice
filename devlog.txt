@@ -1,1 +1,2 @@
 Jan 22: Initialized the repository. Started on the JAX tutorial.
+Jan 23: Created functions folder, finished quickstart.

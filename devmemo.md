@@ -6,7 +6,7 @@ This is the concise documentation for this repository containing only essential 
 Installed jax with conda-forge.
 
 
-Now start from Auto-vectorization in tutorial.
+Now start from JAX - The Sharp Bit in tutorial.
 Goal is to create a simple NLP.
 
 
