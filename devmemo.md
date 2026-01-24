@@ -8,8 +8,12 @@ Python version: 3.11 (for flax compatibility)
 Installed jax with conda-forge.
 Installed flax (and optax) with conda-forge.
 
+
+Task: uninstall conda version and install pip version to use GPU.
 Now start from JAX - The Sharp Bit in tutorial.
-Goal is to create a simple NLP.
+Also, in parallel, do flax tutorial.
+
+Goal is to create a simple NN -> VAE -> AC -> world model.
 
 
 
