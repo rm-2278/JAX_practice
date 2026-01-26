@@ -2,3 +2,4 @@ Jan 22: Initialized the repository. Started on the JAX tutorial.
 Jan 23: Created functions folder, finished quickstart.
 Jan 24: Installed flax and created first model.
 Jan 25: Recreated jax with pip and learnt pure functions.
+Jan 26: Learnt array updates, performance
