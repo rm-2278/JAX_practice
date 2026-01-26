@@ -14,13 +14,13 @@ class Model(nnx.Module):
         return self.forw(nnx.relu(self.dropout(self.bn(self.ln(x)))))  
 
 model = Model(4, 10, 2, rngs=nnx.Rngs(0))
-optimizer = nnx.Optimizer(model, optax.adam(1e-3))
+optimizer = nnx.Optimizer(model, optax.adam(1e-3), wrt=nnx.Param)
 
 @nnx.jit
 def step(model, optimizer, x, y):
     loss_fn = lambda model: ((model(x) - y)**2).mean()
     loss, grad = nnx.value_and_grad(loss_fn)(model)
-    optimizer.update(grad)
+    optimizer.update(model, grad)
     return loss
 
 

@@ -9,7 +9,7 @@ Installed jax with pip install --upgrade "jax[cuda13]". Failed to recognize GPU 
 Installed flax (and optax) with pip.
 
 
-Now start from JAX - The Sharp Bit in tutorial.
+Now start from Inplace updates in tutorial.
 Also, in parallel, do flax tutorial.
 
 Goal is to create a simple NN -> VAE -> AC -> world model.
