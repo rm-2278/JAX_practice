@@ -7,11 +7,13 @@ This is the concise documentation for this repository containing only essential 
 Python version: 3.11 (for flax compatibility)
 Installed jax with pip install --upgrade "jax[cuda13]". Failed to recognize GPU with conda.
 Installed flax (and optax) with pip.
+Installed torch, torchvision with pip.
+
 
 
 Now start from oob indexing in tutorial.
 Also, in parallel, do flax tutorial.
-Also, blog tutorial.
+Also, blog tutorial. Go make the passing function.
 
 Goal is to create a simple NN -> VAE -> AC -> world model.
 
