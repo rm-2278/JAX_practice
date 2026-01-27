@@ -9,7 +9,7 @@ Installed jax with pip install --upgrade "jax[cuda13]". Failed to recognize GPU 
 Installed flax (and optax) with pip.
 
 
-Now start from jax.jit in tutorial.
+Now start from oob indexing in tutorial.
 Also, in parallel, do flax tutorial.
 Also, blog tutorial.
 
