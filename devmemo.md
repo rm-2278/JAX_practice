@@ -11,7 +11,7 @@ Installed torch, torchvision with pip.
 
 
 
-Now start from oob indexing in tutorial.
+Now start from Miscellaneous divergences from NumPy in tutorial.
 Also, in parallel, do flax tutorial.
 Also, blog tutorial. Go make the passing function.
 
