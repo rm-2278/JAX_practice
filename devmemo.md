@@ -11,8 +11,9 @@ Installed torch, torchvision with pip.
 
 
 
-Now start from Miscellaneous divergences from NumPy in tutorial.
+Now start from Automatic vectorization in tutorial.
 Also, blog tutorial. Go make the passing function.
+In UVA tutorial, continue from the data.
 Also, in parallel, do flax tutorial (maybe leave it later).
 
 Goal is to create a simple NN -> VAE -> AC -> world model.
