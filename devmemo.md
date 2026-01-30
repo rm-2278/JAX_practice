@@ -8,12 +8,13 @@ Python version: 3.11 (for flax compatibility)
 Installed jax with pip install --upgrade "jax[cuda13]". Failed to recognize GPU with conda.
 Installed flax (and optax) with pip.
 Installed torch, torchvision with pip.
+Installed matplotlib, tqdm with pip.
 
 
 
-Now start from Automatic vectorization in tutorial.
+Now start from Automatic differentiation in tutorial.
 Also, blog tutorial. Go make the passing function.
-In UVA tutorial, continue from the data.
+In UVA tutorial, continue from the fancy bits.
 Also, in parallel, do flax tutorial (maybe leave it later).
 
 Goal is to create a simple NN -> VAE -> AC -> world model.

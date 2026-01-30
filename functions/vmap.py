@@ -30,3 +30,16 @@ vmap_apply_matrix_3(batched_x).block_until_ready()
 end = time.time()
 
 print(f"{end - start:.6f}")
+
+
+def convolve(x, w):
+    output = []
+    for i in range(1, len(x) - 1):
+        output.append(jnp.dot(x[i-1:i+2], w))
+    return jnp.stack(output)
+
+x = jnp.arange(5)
+xs = jnp.stack([x, x])
+w = jnp.arange(3)
+
+print(vmap(convolve, in_axes=[0, None])(xs, w))
