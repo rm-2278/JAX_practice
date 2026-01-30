@@ -12,8 +12,8 @@ Installed torch, torchvision with pip.
 
 
 Now start from Miscellaneous divergences from NumPy in tutorial.
-Also, in parallel, do flax tutorial.
 Also, blog tutorial. Go make the passing function.
+Also, in parallel, do flax tutorial (maybe leave it later).
 
 Goal is to create a simple NN -> VAE -> AC -> world model.
 

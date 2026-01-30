@@ -5,3 +5,4 @@ Jan 25: Recreated jax with pip and learnt pure functions.
 Jan 26: Learnt array updates, performance
 Jan 27: Learnt jitting class methods and manual pytree class. MLP initializer.
 Jan 28: Implemented forward and loss for MLP. Non-array inputs, out of bounds.
+Jan 29: Learnt jax compilation.
