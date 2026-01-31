@@ -7,3 +7,4 @@ Jan 27: Learnt jitting class methods and manual pytree class. MLP initializer.
 Jan 28: Implemented forward and loss for MLP. Non-array inputs, out of bounds.
 Jan 29: Learnt jax compilation.
 Jan 30: Reproduced MLP from scratch. Added the dataset loading, loss calculation, optimization, training and evaluating. Also learnt vmap.
+Jan 31: Linear regression grad, numerical differentiation.

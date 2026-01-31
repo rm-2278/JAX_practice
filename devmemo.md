@@ -12,7 +12,7 @@ Installed matplotlib, tqdm with pip.
 
 
 
-Now start from Automatic differentiation in tutorial.
+Now start from pytree in tutorial.
 Also, blog tutorial. Go make the passing function.
 In UVA tutorial, continue from the fancy bits.
 Also, in parallel, do flax tutorial (maybe leave it later).
