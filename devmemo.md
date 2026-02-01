@@ -14,10 +14,10 @@ Installed matplotlib, tqdm with pip.
 
 Now start from pytree in tutorial.
 Also, blog tutorial. Go make the passing function.
-In UVA tutorial, continue from the fancy bits.
+In UVA tutorial, continue from AE.
 Also, in parallel, do flax tutorial (maybe leave it later).
 
-Goal is to create a simple NN -> VAE -> AC -> world model.
+Goal is to create a simple AE -> VAE -> Actor-Critic -> world model.
 
 
 
