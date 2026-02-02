@@ -12,7 +12,7 @@ Installed matplotlib, tqdm with pip.
 
 
 
-Now start from pytree in tutorial.
+Now start from PRN in tutorial.
 Also, blog tutorial. Go make the passing function.
 In UVA tutorial, continue from AE.
 Also, in parallel, do flax tutorial (maybe leave it later).

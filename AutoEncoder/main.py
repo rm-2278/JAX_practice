@@ -25,6 +25,9 @@ import torchvision
 from torchvision.datasets import CIFAR10
 # from torch.utils.tensorboard import SummaryWriter
 
+from model import Encoder, Decoder, AutoEncoder
+
+
 DATASET_PATH = "../data"
 CHECKPOINT_PATH = "../checkpoints/autoencoder"
 
@@ -38,6 +41,10 @@ def image_to_numpy(img):
         img = img / 255. * 2 - 1
     return img
 
+def jax_to_torch(imgs):
+    imgs = jax.device_get(imgs)
+    return torch.from_numpy(imgs).permute(0, 3, 1, 2) # (B, H, W, C) -> (B, C, H, W)
+
 def numpy_collate(batch):
     if isinstance(batch[0], np.ndarray):
         return np.stack(batch)
@@ -47,73 +54,31 @@ def numpy_collate(batch):
     else:
         return np.array(batch)
 
-
-# model architecture
-class Encoder(nn.Module):
-    c_hid : int
-    latent_dim : int
-            
-    @nn.compact
-    def __call__(self, x):
-        x = nn.Conv(features=self.c_hid, kernel_size=(3, 3), strides=2)(x) # 32x32 -> 16x16, Defaults to padding=Same
-        x = nn.gelu(x)
-        x = nn.Conv(features=self.c_hid, kernel_size=(3, 3))(x) # Defaults to padding=Same
-        x = nn.gelu(x)
-        x = nn.Conv(features=2*self.c_hid, kernel_size=(3, 3), strides=2)(x) # 16x16 -> 8x8
-        x = nn.gelu(x)
-        x = nn.Conv(features=2*self.c_hid, kernel_size=(3, 3))(x)
-        x = nn.gelu(x)
-        x = nn.Conv(features=2*self.c_hid, kernel_size=(3, 3), strides=2)(x) #8x8 -> 4x4
-        x = nn.gelu(x)
-        x = x.reshape(x.shape[0], -1) # (batch_size, 2*c_hid*4*4)
-        x = nn.Dense(features=self.latent_dim)(x) # preserves the batch_dimension (only applies to the last dimension)
-        return x
-
-
-class Decoder(nn.Module):
-    c_out : int
-    c_hid : int
-    latent_dim : int
-    
-    @nn.compact
-    def __call__(self, x):
-        x = nn.Dense(features=2*self.c_hid*4*4)(x)
-        x = nn.gelu(x)
-        x = x.reshape(x.shape[0], 4, 4, -1)
-        x = nn.ConvTranspose(features=2*self.c_hid, kernel_size=(3, 3), strides=(2, 2))(x) # 4x4 -> 8x8Asymmetric padding
-        x = nn.gelu(x)
-        x = nn.Conv(features=2*self.c_hid, kernel_size=(3, 3))(x) #ConvTranspose works as well
-        x = nn.gelu(x)
-        x = nn.ConvTranspose(features=self.c_hid, kernel_size=(3, 3), strides=(2, 2))(x) # 8x8 -> 16x16
-        x = nn.gelu(x)
-        x = nn.Conv(features=self.c_hid, kernel_size=(3, 3))(x)
-        x = nn.gelu(x)
-        x = nn.ConvTranspose(features=self.c_out, kernel_size=(3, 3), strides=(2, 2))(x) #16x16 -> 32x32
-        x = nn.tanh(x)
-        return x
-        
-class AutoEncoder(nn.Module):
-    c_hid : int
-    latent_dim : int
-    
-    def setup(self): # For explicitly retrieving the sub-modules
-        self.encoder = Encoder(self.c_hid, self.latent_dim)
-        self.decoder = Decoder(3, self.c_hid, self.latent_dim)
-        
-    def __call__(self, x):
-        z = self.encoder(x)
-        x_hat = self.decoder(z)
-        return x_hat
-
-
-
 # Loss
 def mse_loss(model, params, batch): 
     imgs, _ = batch
     recon_imgs = model.apply({'params': params}, imgs)
     loss = ((imgs - recon_imgs)**2).mean(axis=0).sum() #mean over batch, sum over pixel
     return loss
-    
+
+class GenerateCallback:
+    def __init__(self, input_imgs, every_n_epochs=1):
+        self.input_imgs = input_imgs
+        self.every_n_epochs = every_n_epochs
+        
+    def log_generation(self, model, state, logger, epoch):
+        if epoch % self.every_n_epochs == 0:
+            reconst_img = model.apply({'params': state.params}, self.input_imgs)
+            # Move to device
+            reconst_img = jax.device_get(reconst_img)
+            
+            # Save imgs
+            imgs = np.stack([self.input_imgs, reconst_img], axis=1).reshape(-1, *reconst_img.shape[1:])
+            imgs = jax_to_torch(imgs)
+            grid = torchvision.utils.make_grid(imgs, nrow=2, normalize=True, value_range=(-1, 1))
+            # add to logger
+            logger.add_image("Reconstructions", grid, global_step=epoch)
+
     
 
 train_dataset = CIFAR10(root=DATASET_PATH, train=True, transform=image_to_numpy, download=True)

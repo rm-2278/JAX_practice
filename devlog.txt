@@ -9,3 +9,4 @@ Jan 29: Learnt jax compilation.
 Jan 30: Reproduced MLP from scratch. Added the dataset loading, loss calculation, optimization, training and evaluating. Also learnt vmap.
 Jan 31: Linear regression grad, numerical differentiation.
 Feb 1: AutoEncoder dataset prep, model implementation, loss calculation
+Feb 2: Learnt pytree mapping. Logging module for AutoEncoder.
