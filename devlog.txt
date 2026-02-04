@@ -10,3 +10,5 @@ Jan 30: Reproduced MLP from scratch. Added the dataset loading, loss calculation
 Jan 31: Linear regression grad, numerical differentiation.
 Feb 1: AutoEncoder dataset prep, model implementation, loss calculation
 Feb 2: Learnt pytree mapping. Logging module for AutoEncoder.
+Feb 3: Deepened PRNG. Created TrainerModule for AutoEncoder.
+Feb 4: Visualized reconstruction loss vs latent dimensionality for AE.

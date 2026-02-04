@@ -1,3 +1,4 @@
+import jax
 import jax.numpy as jnp
 from jax import random
 
@@ -12,3 +13,10 @@ for i in range(3):
 
     print(val)
     key = new_key
+
+
+key = random.key(42)
+subkeys = random.split(key, 3)
+print(random.normal(key, shape=(3,))) # No sequential equivalence
+print(jnp.stack([random.normal(subkey) for subkey in subkeys])) # Keys determine the randomness
+print(jax.vmap(random.normal)(subkeys))
