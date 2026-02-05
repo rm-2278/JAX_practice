@@ -13,10 +13,10 @@ Installed matplotlib, tqdm with pip.
 
 Now start from parallelism in tutorial.
 Also, blog tutorial. Go make the passing function.
-In UVA tutorial, continue from AE.
+In UVA tutorial, continue from VAE.
 Also, in parallel, do flax tutorial (maybe leave it later).
 
-Goal is to create a simple AE -> VAE -> Actor-Critic -> world model.
+Goal is to create a simple AE (done!) -> VAE -> Actor-Critic -> world model.
 
 
 
