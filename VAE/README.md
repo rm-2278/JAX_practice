@@ -1,0 +1,1 @@
+This is an implementation of VAE based on http://arxiv.org/abs/1312.6114 using JAX.
