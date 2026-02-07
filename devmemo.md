@@ -10,10 +10,10 @@ Installed flax (and optax) with pip.
 Installed torch, torchvision with pip.
 Installed matplotlib, tqdm with pip.
 
-
+Continue on VAE. logvar, diff activation, deeper layer etc.
 Now start from parallelism in tutorial.
 Also, blog tutorial. Go make the passing function.
-In UVA tutorial, continue from VAE.
+In UVA tutorial, continue.
 Also, in parallel, do flax tutorial (maybe leave it later).
 
 Goal is to create a simple AE (done!) -> VAE -> Actor-Critic -> world model.
