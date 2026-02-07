@@ -14,3 +14,4 @@ Feb 3: Deepened PRNG. Created TrainerModule for AutoEncoder.
 Feb 4: Visualized reconstruction loss vs latent dimensionality for AE.
 Feb 5: Visualized clustering of embedded space in AE. Organised AE code base.
 Feb 6: Created the AutoEncoder folder, implemented backbone.
+Feb 7: Learnt data parallelism. 
