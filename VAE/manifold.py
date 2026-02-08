@@ -43,7 +43,7 @@ for i, x in enumerate(grid_x):
         figure[i * fig_size: (i+1) * fig_size, j * fig_size: (j+1) * fig_size] = img
 
 plt.figure(figsize=(12, 12))
-plt.imshow(figure, cmap='grey')
+plt.imshow(figure, cmap='grey_r')
 plt.axis('off')
 plt.savefig("vae_manifold.png", bbox_inches="tight", pad_inches=0, dpi=300)
 plt.show()

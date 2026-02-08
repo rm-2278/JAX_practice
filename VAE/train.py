@@ -56,7 +56,7 @@ class TrainerModule:
     def init_model(self):
         init_key, call_key = jax.random.split(self.init_key)
         params = self.model.init(init_key, call_key, self.example_img)['params']
-        optimizer = optax.adagrad(1e-3)
+        optimizer = optax.adagrad(0.02)
         self.state = train_state.TrainState.create(apply_fn=self.model.apply, params=params, tx=optimizer)
 
 
