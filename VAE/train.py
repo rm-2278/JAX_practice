@@ -4,25 +4,24 @@ import optax
 import numpy as np
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
+import os
 
-from flax.training import train_state
+from flax.training import train_state, checkpoints
 
 from model import VAE
 
 def loss_fn(key, model, params, batch):
     imgs, _ = batch
-    recon_imgs, mu, sigma = model.apply({'params': params}, key, imgs)
+    recon_logits, mu, logvar = model.apply({'params': params}, key, imgs)
     # loss is negative ELBO(L)
-    eps = 1e-6
-    recon_imgs = jnp.clip(recon_imgs, eps, 1.0 - eps) # Just to be safe
-    recon_loss = -jnp.sum(imgs * jnp.log(recon_imgs) + (1 - imgs)  * jnp.log(1 - recon_imgs), axis=(1, 2)) # Binary cross entropy loss
-    recon_loss = jnp.mean(recon_loss)
-    kl_loss = -0.5 * jnp.sum(1 + jnp.log(jnp.square(sigma)) - jnp.square(mu) - jnp.square(sigma), axis=-1)
-    kl_loss = jnp.mean(kl_loss)
+    # recon_imgs = jax.nn.sigmoid(recon_logits) # Already clipped
+    # recon_loss = -jnp.sum(imgs * jnp.log(recon_imgs) + (1 - imgs)  * jnp.log(1 - recon_imgs), axis=(1, 2)).mean() # Binary cross entropy loss
+    recon_loss = optax.sigmoid_binary_cross_entropy(recon_logits, imgs).sum(axis=(1, 2)).mean() # Numerically more stable, applies sigmoid
+    kl_loss = -0.5 * jnp.sum(1 + logvar - jnp.square(mu) - jnp.exp(logvar), axis=-1).mean()
     return recon_loss + kl_loss
 
 class TrainerModule:
-    def __init__(self, latent_dim, train_dataloader, val_dataloader, seed=42):
+    def __init__(self, latent_dim, train_dataloader, val_dataloader, log_dir, seed=42):
         self.latent_dim = latent_dim
         self.seed = seed
         self.init_key = jax.random.key(self.seed)
@@ -33,6 +32,10 @@ class TrainerModule:
         self.example_img = next(iter(self.train_dataloader))[0][:8]
         self.model = VAE(latent_dim)
         self.logger = SummaryWriter()
+        
+        self.log_dir=os.path.abspath( # orbax tensorstore refuse relative path
+            os.path.join(log_dir, f'mnist_{latent_dim}')
+        )
         
         self.create_functions()
         
@@ -53,21 +56,22 @@ class TrainerModule:
     def init_model(self):
         init_key, call_key = jax.random.split(self.init_key)
         params = self.model.init(init_key, call_key, self.example_img)['params']
-        optimizer = optax.adagrad(0.02)
+        optimizer = optax.adagrad(1e-3)
         self.state = train_state.TrainState.create(apply_fn=self.model.apply, params=params, tx=optimizer)
 
 
-    def train_model(self, key, num_epochs=150): # Originally 1500
+    def train_model(self, key, num_epochs=1500): # Originally 1500
         best_loss = 1e6
         for epoch_idx in tqdm(range(num_epochs)):
             key, subkey = jax.random.split(key)
             self.train_epoch(subkey, epoch_idx)
-            if epoch_idx % 10 == 0:
+            if epoch_idx % 50 == 0: # Reduced logging
                 key, eval_key = jax.random.split(key)
                 eval_loss = self.eval_model(eval_key, self.val_dataloader)
                 self.logger.add_scalar('val/loss', eval_loss, global_step=epoch_idx)
                 if eval_loss < best_loss:
                     best_loss = eval_loss
+                    self.save_model(step=epoch_idx)
                 self.logger.flush()
             
     def train_epoch(self, key, epoch):
@@ -93,3 +97,12 @@ class TrainerModule:
         avg_loss = (losses * batch_sizes).sum() / batch_sizes.sum()
         return avg_loss
             
+    def save_model(self, step=0):
+        checkpoints.save_checkpoint(ckpt_dir=self.log_dir, step=step, target=self.state.params, prefix=f'mnist_{self.latent_dim}')
+        
+    def load_model(self):
+        params = checkpoints.restore_checkpoint(ckpt_dir=self.log_dir, target=self.state.params, prefix=f'mnist_{self.latent_dim}')
+        self.state = train_state.TrainState.create(apply_fn=self.model.apply, params=params, tx=self.state.tx)
+        
+    def checkpoint_exists(self):
+        return checkpoints.latest_checkpoint(ckpt_dir=self.log_dir, prefix=f'mnist_{self.latent_dim}') is not None
