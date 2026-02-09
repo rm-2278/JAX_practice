@@ -11,7 +11,7 @@ Installed torch, torchvision with pip.
 Installed matplotlib, tqdm with pip.
 
 Continue on VAE. diff activation, deeper layer etc.
-Now start from tracing in tutorial.
+Now start from stateful computation in tutorial.
 Also, blog tutorial. Go make the passing function.
 In UVA tutorial, continue.
 Also, in parallel, do flax tutorial (maybe leave it later).
