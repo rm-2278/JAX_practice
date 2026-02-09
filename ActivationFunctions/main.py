@@ -52,9 +52,9 @@ def get_grad(act_fn, x):
     return jax.vmap(jax.grad(act_fn))(x)
 
 def visulize_activation_function(act_fn):
-    
+    pass
 
 act_fns = [act_fn() for act_fn in act_fn_dict]
 x = np.linspace(-5, 5, 1000)
 rows = np.ceil(len(act_fn_dict) / 2.)
-fig, ax = plt.
+fig, ax = plt.subplots(rows, 2, figsize=(8, rows*4))
