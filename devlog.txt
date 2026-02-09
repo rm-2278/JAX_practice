@@ -16,4 +16,4 @@ Feb 5: Visualized clustering of embedded space in AE. Organised AE code base.
 Feb 6: Created the AutoEncoder folder, implemented backbone.
 Feb 7: Learnt data parallelism. 
 Feb 8: Learnt control flow. Visualised manifold for VAE. Also added hidden layer.
-Feb 9: Learnt tracing. 
+Feb 9: Learnt tracing. Created Activation Function folder.
