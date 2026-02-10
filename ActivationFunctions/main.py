@@ -1,44 +1,127 @@
-import math
-import numpy as np
-
+import os
+import json
+import pickle
+from model import NN
 import jax
 import jax.numpy as jnp
-
-from flax import linen as nn
-
+import optax
+import torch
+import torch.utils.data as data
+import torchvision
+from torchvision.datasets import FashionMNIST
+import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
+
+from visualization import Tanh, Sigmoid, ReLU, LeakyReLU, ELU, Swish
 
 
 DATASET_PATH = '../data'
 CHECKPOINT_PATH = '../checkpoints'
 
-print("Using device:", jax.devices()[0])
 
-class Sigmoid(nn.Module):
-    def __call__(self, x):
-        return 1 / (1 + jnp.exp(-x))
+def _get_config_file(model_path, model_name):
+    return os.path.join(model_path, model_name + ".config")
+
+def _get_model_file(model_path, model_name):
+    return os.path.join(model_path, model_name + '.tar')
+
+def load_model(model_path, model_name, state=None):
+    assert NotImplementedError
+
+def save_model(model, params, model_path, model_name):
+    config_dict = {
+        'num_classes': model.num_classes,
+        'hidden_sizes': model.hidden_sizes,
+        'act_fn': model.act_fn.__class__.__name__.lower()
+    }
     
-class Tanh(nn.Module):
-    def __call__(self, x):
-        return (jnp.exp(x) - jnp.exp(-x)) / (jnp.exp(x) + jnp.exp(-x))
+    if hasattr(model.act_fn, 'alpha'):
+        config_dict['act_fn']['alpha'] = model.act_fn.alpha
+
+    os.makedirs(model_path, exist_ok=True)
+    config_file, model_file = _get_config_file(model_path, model_name), _get_model_file(model_path, model_name)
+    with open(config_file, "w") as f:
+        json.dump(config_dict, f)
+    with open(model_file, "wb") as f:
+        pickle.dump(params, f)
     
-class ReLU(nn.Module):
-    def __call__(self, x):
-        return jnp.maximum(x, 0)
 
-class LeakyReLU(nn.Module):
-    alpha: float = 0.1
-    def __call__(self, x):
-        return jnp.where(x > 0, x, x*self.alpha)
 
-class ELU(nn.Module):
-    def __call__(self, x):
-        return jnp.where(x > 0, x, jnp.exp(x) - 1)
 
-class Swish(nn.Module):
-    def __call__(self, x):
-        return x * nn.sigmoid(x)
+# Dataset pre-processing
+def image_to_numpy(img):
+    img = np.array(img, dtype=np.float32)
+    if img.max() > 1:
+        img = (img / 255. - 0.5) / 0.5
+    return img
+
+def numpy_collate(batch):
+    if isinstance(batch[0], np.ndarray):
+        return np.stack(batch)
+    elif isinstance(batch[0], (tuple, list)):
+        transposed = zip(*batch)
+        return [numpy_collate(sample) for sample in transposed]
+    else:
+        return np.array(batch)
     
+    
+    
+from dataclasses import dataclass, field
+from typing import List
+@dataclass #generates boilerplate
+class TrainConfig:
+    dataset_path: str = "../data"
+    batch_size: int = 1024
+    num_workers: int = 4
+
+
+cfg = TrainConfig()
+
+
+train_dataset = FashionMNIST(root=cfg.dataset_path, train=True, transform=image_to_numpy, download=True)
+train_dataset, val_dataset = data.random_split(train_dataset, [50000, 10000], generator=torch.Generator().manual_seed(42))
+test_dataset = FashionMNIST(root=cfg.dataset_path, train=False, transform=image_to_numpy, download=True)
+
+
+batch_size = cfg.batch_size
+
+train_dataloader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=cfg.num_workers, collate_fn=numpy_collate, pin_memory=True, persistent_workers=True)
+val_dataloader = data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=cfg.num_workers, collate_fn=numpy_collate)
+test_dataloader = data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=cfg.num_workers, collate_fn=numpy_collate)
+
+small_dataloader = data.DataLoader(train_dataset, batch_size=256, shuffle=False, drop_last=True, num_workers=cfg.num_workers, collate_fn=numpy_collate)
+example_batch = next(iter(small_dataloader))
+
+def visualize_gradient(net, params, axes_row, act_fn_label, color="C0"):
+    def loss(params):
+        imgs, labels = example_batch
+        logits = net.apply(params, imgs)
+        loss = optax.softmax_cross_entropy_with_integer_labels(logits, labels).mean()
+        return loss
+    
+    grads = jax.grad(loss)(params)
+    grads = jax.device_get(grads)
+    grads = jax.tree_util.tree_leaves(grads)
+    grads = [g.reshape(-1) for g in grads if g.ndim > 1]
+    
+    for g_idx, g in enumerate(grads):
+        layer_ax = axes_row[g_idx]
+        sns.histplot(g, bins=30, ax=layer_ax, color=color, kde=True)
+        layer_ax.set_title(f"Layer {g_idx * 2} weights", fontsize=9)
+
+    mid_ax = axes_row[len(grads) // 2]
+    mid_ax.text(
+        0.5,
+        1.25,
+        f"{act_fn_label} activation",
+        transform=mid_ax.transAxes, # Change axes to 0,0 ~ 1,1
+        ha="center", # Set the text to anchor at the center horizontally
+        va="bottom", # Set the text to anchor at the bottom vertically
+        fontsize=11,
+        fontweight="bold"
+    )
+
 act_fn_dict = {
     "sigmoid": Sigmoid,
     "tanh": Tanh,
@@ -48,28 +131,21 @@ act_fn_dict = {
     "swish": Swish
 }
 
-def get_grad(act_fn, x):
-    # grad requires act_fn to spit a scalar, so vmap batchifies it. 
-    #Circumvents the summation trick that is required otherwise.
-    return jax.vmap(jax.grad(act_fn))(x)
+act_fn_items = list(act_fn_dict.items())
+probe_net = NN(act_fn_dict[next(iter(act_fn_dict))]())
+probe_params = probe_net.init(jax.random.key(0), example_batch[0])
+columns = len([g for g in jax.tree_util.tree_leaves(jax.grad(lambda p: 0.0)(probe_params)) if g.ndim > 1])
+fig, axes = plt.subplots(len(act_fn_items), columns, figsize=(columns*3.5, len(act_fn_items)*2.5))
+axes = np.atleast_2d(axes) # In case only 1 activation function
 
-def visualize_activation_function(act_fn, ax, x):
-    y = act_fn(x)
-    y_grad = get_grad(act_fn, x)
-    
-    ax.plot(x, y, linewidth=2, label="ActFn")
-    ax.plot(x, y_grad, linewidth=2, label="Gradient")
-    ax.set_title(act_fn.__class__.__name__)
-    ax.legend()
-    ax.set_ylim(-1.5, x.max())
+for i, act_fn_name in enumerate(act_fn_dict):
+    act_fn = act_fn_dict[act_fn_name]()
+    net = NN(act_fn)
+    params = net.init(jax.random.key(0), example_batch[0])
+    visualize_gradient(net, params, axes[i], act_fn_name.capitalize(), color=f"C{i}")
 
-act_fns = [act_fn() for act_fn in act_fn_dict.values()]
-x = np.linspace(-5, 5, 1000)
-rows = math.ceil(len(act_fn_dict) / 3.)
-fig, ax = plt.subplots(rows, 3, figsize=(4*3, 4*rows))
-for i, act_fn in enumerate(act_fns):
-    visualize_activation_function(act_fn, ax[divmod(i, 3)], x)
-    
-plt.subplots_adjust(hspace=0.3)
-plt.savefig("activation_functions.png")
+for ax in axes[-1]:
+    ax.set_xlabel("Grad magnitude")
+plt.tight_layout(h_pad=3.0)
+plt.savefig("gradient_per_activation_function.png", dpi=1000)
 plt.show()

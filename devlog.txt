@@ -17,3 +17,4 @@ Feb 6: Created the AutoEncoder folder, implemented backbone.
 Feb 7: Learnt data parallelism. 
 Feb 8: Learnt control flow. Visualised manifold for VAE. Also added hidden layer.
 Feb 9: Learnt tracing. Created Activation Function folder. Visualised activation functions.
+Feb 10: Learnt stateful computations. Visualised the gradient flow for each activation function.
