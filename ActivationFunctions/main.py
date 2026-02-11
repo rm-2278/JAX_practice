@@ -225,7 +225,7 @@ def train_model(net, model_name, max_epochs=50, patience=7, batch_size=256, over
             print(f"[Epoch {epoch+1:2d}] Training accuracy: {train_acc:4.2%}, Validation accuracy: {val_acc:4.2%}")
             
             if len(val_scores)==1 or val_acc > val_scores[best_val_epoch]:
-                save_model(net, params, CHECKPOINT_PATH, model_name)
+                save_model(net, state.params, CHECKPOINT_PATH, model_name)
                 best_val_epoch = epoch
             elif best_val_epoch <= epoch - patience:
                 print("Early Stopping triggered")
@@ -258,4 +258,4 @@ for name in act_fn_dict:
     print(f"Training model with {name} activation function")
     act_fn = act_fn_dict[name]()
     net = NN(act_fn)
-    train_model(net, f"FashionMNIST_{name}", overwrite=True)
+    train_model(net, f"FashionMNIST_{name}")
