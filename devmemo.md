@@ -12,7 +12,7 @@ Installed matplotlib, tqdm with pip.
 
 Continue on VAE. diff activation, deeper layer etc.
 Continue on activation function
-Now start from key concepts in jax tutorial.
+Now start from autodiff in jax tutorial.
 Also, blog tutorial. Go make the passing function.
 In UVA tutorial, continue.
 Also, in parallel, do flax tutorial (maybe leave it later).
