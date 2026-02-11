@@ -236,7 +236,7 @@ def train_model(net, model_name, max_epochs=50, patience=7, batch_size=256, over
         plt.xlabel("Epochs")
         plt.ylabel("Validation accuracy")
         plt.title(f"Validation performance of {model_name}")
-        plt.show()
+        plt.savefig(f"validation_performances/{model_name}.png")
         plt.close()
     
     state, _ = load_model(CHECKPOINT_PATH, model_name, state)
@@ -258,4 +258,4 @@ for name in act_fn_dict:
     print(f"Training model with {name} activation function")
     act_fn = act_fn_dict[name]()
     net = NN(act_fn)
-    train_model(net, f"FashionMNIST_{name}")
+    train_model(net, f"FashionMNIST_{name}", overwrite=False)
