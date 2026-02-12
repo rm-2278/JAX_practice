@@ -11,7 +11,7 @@ Installed torch, torchvision with pip.
 Installed matplotlib, tqdm with pip.
 
 Continue on VAE. diff activation, deeper layer etc.
-Continue on activation function
+Proceed to optimiser, transformer or world models.
 Now start from autodiff in jax tutorial.
 Also, blog tutorial. Go make the passing function.
 In UVA tutorial, continue.

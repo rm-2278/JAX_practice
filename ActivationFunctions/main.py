@@ -150,31 +150,31 @@ act_fn_dict = {
     "swish": Swish
 }
 
-# Gradient per activation visualization.
+# # Gradient per activation visualization.
 
-act_fn_items = list(act_fn_dict.items())
-probe_net = NN(act_fn_dict[next(iter(act_fn_dict))]())
-probe_params = probe_net.init(jax.random.key(0), example_batch[0])
-columns = len([g for g in jax.tree_util.tree_leaves(jax.grad(lambda p: 0.0)(probe_params)) if g.ndim > 1])
-fig, axes = plt.subplots(len(act_fn_items), columns, figsize=(columns*4.0, len(act_fn_items)*3.0), constrained_layout=True)
-axes = np.atleast_2d(axes) # In case only 1 activation function
+# act_fn_items = list(act_fn_dict.items())
+# probe_net = NN(act_fn_dict[next(iter(act_fn_dict))]())
+# probe_params = probe_net.init(jax.random.key(0), example_batch[0])
+# columns = len([g for g in jax.tree_util.tree_leaves(jax.grad(lambda p: 0.0)(probe_params)) if g.ndim > 1])
+# fig, axes = plt.subplots(len(act_fn_items), columns, figsize=(columns*4.0, len(act_fn_items)*3.0), constrained_layout=True)
+# axes = np.atleast_2d(axes) # In case only 1 activation function
 
-sns.set_style("whitegrid")
-sns.set_context("paper", font_scale=1.1)
+# sns.set_style("whitegrid")
+# sns.set_context("paper", font_scale=1.1)
 
-for i, act_fn_name in enumerate(act_fn_dict):
-    act_fn = act_fn_dict[act_fn_name]()
-    net = NN(act_fn)
-    params = net.init(jax.random.key(0), example_batch[0])
-    visualize_gradient(net, params, axes[i], act_fn_name.capitalize(), color=f"C{i}")
+# for i, act_fn_name in enumerate(act_fn_dict):
+#     act_fn = act_fn_dict[act_fn_name]()
+#     net = NN(act_fn)
+#     params = net.init(jax.random.key(0), example_batch[0])
+#     visualize_gradient(net, params, axes[i], act_fn_name.capitalize(), color=f"C{i}")
 
-for ax in axes[-1]:
-    ax.set_xlabel("Grad magnitude", fontsize=10)
-plt.tight_layout(h_pad=3.0)
-# Save a vector copy (SVG) for crisp scaling and a high-DPI PNG for raster viewers
-plt.savefig("gradient_per_activation_function.svg")
-plt.savefig("gradient_per_activation_function.png", dpi=600, bbox_inches='tight')
-plt.show()
+# for ax in axes[-1]:
+#     ax.set_xlabel("Grad magnitude", fontsize=10)
+# plt.tight_layout(h_pad=3.0)
+# # Save a vector copy (SVG) for crisp scaling and a high-DPI PNG for raster viewers
+# plt.savefig("gradient_per_activation_function.svg")
+# plt.savefig("gradient_per_activation_function.png", dpi=600, bbox_inches='tight')
+# plt.show()
 
 
 # # Training the model
@@ -265,5 +265,37 @@ plt.show()
 #     net = NN(act_fn)
 #     train_model(net, f"FashionMNIST_{name}", overwrite=False)
 
-net_relu = NN(act_fn=ReLU(), )
-measure_num_dead_neurons()
+def measure_num_dead_neurons(net, params):
+    neurons_dead = [
+        jnp.ones(hd, dtype=jnp.dtype('bool')) for hd in net.hidden_sizes # Record which neurons are dead. 1 means dead.
+    ]
+    
+    get_activations = jax.jit(lambda inp: net.apply(params, inp, return_activations=True)[1])
+    for img, _ in tqdm(train_dataloader, leave=False):
+        activations = get_activations(img)
+        for index, activ in enumerate(activations[1::2]):
+            neurons_dead[index] = jnp.logical_and(neurons_dead[index], (activ==0).all(axis=0)) # zero out the ones that were activated
+    number_neurons_dead = [t.sum().item() for t in neurons_dead]
+    print(f"Number of dead neurons: {number_neurons_dead}")
+    print(f"Percentage:", ", ".join([f"{x/s:4.2%}" for x, s in zip(number_neurons_dead, net.hidden_sizes)]))
+    
+
+# We can observe few dead neurons
+net_relu = NN(act_fn=ReLU())
+params = net_relu.init(jax.random.key(0), example_batch[0])
+measure_num_dead_neurons(net_relu, params)
+
+# Leaky relu has no dead neurons.
+net_leakyrelu = NN(act_fn=LeakyReLU())
+params = net_relu.init(jax.random.key(0), example_batch[0])
+measure_num_dead_neurons(net_leakyrelu, params)
+
+# Fewer dead neurons (due to model being trained)
+state, net_relu = load_model(CHECKPOINT_PATH, model_name="FashionMNIST_relu")
+measure_num_dead_neurons(net_relu, state.params)
+
+# Near 50% dead neurons in the last layers. Later layers more likely dead neurons due to loss in variance in the earlier layer.
+# Later layers can become alive after training, while input layer cannot.
+net_relu = NN(act_fn=ReLU(), hidden_sizes=(256, 256, 256, 256, 256, 128, 128, 128, 128, 128))
+params = net_relu.init(jax.random.key(0), example_batch[0])
+measure_num_dead_neurons(net_relu, params)

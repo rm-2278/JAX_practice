@@ -28,3 +28,5 @@ We can observe below that gradient when using sigmoid quickly dimishes as the la
 
 <img src="ActivationFunctions/gradient_per_activation_function.svg" alt="Activation Function Gradients" width="800"/>
 <p><em>Figure: plot of the weight of gradients for each layer of different activation functions.</em></p>
+
+We also compared the performance of model for each activation function on FashionMNIST, and verified the existence of dead neurons in ReLU due to its flatness below 0. See the folder for more detail.
