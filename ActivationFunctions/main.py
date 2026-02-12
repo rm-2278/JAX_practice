@@ -126,8 +126,8 @@ def visualize_gradient(net, params, axes_row, act_fn_label, color="C0"):
     
     for g_idx, g in enumerate(grads):
         layer_ax = axes_row[g_idx]
-        sns.histplot(g, bins=30, ax=layer_ax, color=color, kde=True)
-        layer_ax.set_title(f"Layer {g_idx * 2} weights", fontsize=9)
+        sns.histplot(g, bins=80, ax=layer_ax, color=color, kde=False, stat='density', alpha=0.9)
+        layer_ax.set_title(f"Layer {g_idx * 2} weights", fontsize=10)
 
     mid_ax = axes_row[len(grads) // 2]
     mid_ax.text(
@@ -150,112 +150,120 @@ act_fn_dict = {
     "swish": Swish
 }
 
-# # Gradient per activation visualization.
+# Gradient per activation visualization.
 
-# act_fn_items = list(act_fn_dict.items())
-# probe_net = NN(act_fn_dict[next(iter(act_fn_dict))]())
-# probe_params = probe_net.init(jax.random.key(0), example_batch[0])
-# columns = len([g for g in jax.tree_util.tree_leaves(jax.grad(lambda p: 0.0)(probe_params)) if g.ndim > 1])
-# fig, axes = plt.subplots(len(act_fn_items), columns, figsize=(columns*3.5, len(act_fn_items)*2.5))
-# axes = np.atleast_2d(axes) # In case only 1 activation function
+act_fn_items = list(act_fn_dict.items())
+probe_net = NN(act_fn_dict[next(iter(act_fn_dict))]())
+probe_params = probe_net.init(jax.random.key(0), example_batch[0])
+columns = len([g for g in jax.tree_util.tree_leaves(jax.grad(lambda p: 0.0)(probe_params)) if g.ndim > 1])
+fig, axes = plt.subplots(len(act_fn_items), columns, figsize=(columns*4.0, len(act_fn_items)*3.0), constrained_layout=True)
+axes = np.atleast_2d(axes) # In case only 1 activation function
 
-# for i, act_fn_name in enumerate(act_fn_dict):
-#     act_fn = act_fn_dict[act_fn_name]()
-#     net = NN(act_fn)
-#     params = net.init(jax.random.key(0), example_batch[0])
-#     visualize_gradient(net, params, axes[i], act_fn_name.capitalize(), color=f"C{i}")
+sns.set_style("whitegrid")
+sns.set_context("paper", font_scale=1.1)
 
-# for ax in axes[-1]:
-#     ax.set_xlabel("Grad magnitude")
-# plt.tight_layout(h_pad=3.0)
-# plt.savefig("gradient_per_activation_function.png", dpi=1000)
-# plt.show()
-
-
-# Training the model
-def calculate_loss(params, apply_fn, batch):
-    imgs, labels = batch
-    logits = apply_fn(params, imgs)
-    loss = optax.softmax_cross_entropy_with_integer_labels(logits, labels).mean()
-    acc = (labels == logits.argmax(axis=-1)).mean()
-    return loss, acc
-
-@jax.jit
-def train_step(state, batch):
-    (_, acc), grads = jax.value_and_grad(calculate_loss, has_aux=True)(state.params, state.apply_fn, batch)
-    state = state.apply_gradients(grads=grads)
-    return state, acc
-
-@jax.jit
-def eval_step(state, batch):
-    _, acc = calculate_loss(state.params, state.apply_fn, batch)
-    return acc
-
-
-def train_model(net, model_name, max_epochs=50, patience=7, batch_size=256, overwrite=False):
-    file_exists = os.path.isfile(_get_model_file(CHECKPOINT_PATH, model_name))
-    if file_exists and not overwrite:
-        print("Model already trained, skipping training")
-        state = None
-    else:
-        if file_exists:
-            print("Overwriting model...")
-        
-        params = net.init(jax.random.key(42), example_batch[0])
-        state = train_state.TrainState.create(apply_fn=net.apply, params=params, tx=optax.sgd(learning_rate=1e-2, momentum=0.9))
-        
-        train_local_dataloader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, collate_fn=numpy_collate, generator=torch.Generator().manual_seed(42))
-                
-        val_scores = []
-        best_val_epoch = -1
-        
-        
-        for epoch in range(max_epochs):
-            
-            # Training
-            train_acc = 0.
-            for batch in tqdm(train_local_dataloader, desc=f"Epoch {epoch+1}", leave=False):
-                state, acc = train_step(state, batch)
-                train_acc += acc
-            train_acc /= len(train_local_dataloader)
-            
-            # Validation
-            val_acc = test_model(state, val_dataloader)
-            val_scores.append(val_acc)
-            print(f"[Epoch {epoch+1:2d}] Training accuracy: {train_acc:4.2%}, Validation accuracy: {val_acc:4.2%}")
-            
-            if len(val_scores)==1 or val_acc > val_scores[best_val_epoch]:
-                save_model(net, state.params, CHECKPOINT_PATH, model_name)
-                best_val_epoch = epoch
-            elif best_val_epoch <= epoch - patience:
-                print("Early Stopping triggered")
-                break
-            
-        # Plot curve
-        plt.plot([i for i in range(1, len(val_scores)+1)], val_scores)
-        plt.xlabel("Epochs")
-        plt.ylabel("Validation accuracy")
-        plt.title(f"Validation performance of {model_name}")
-        plt.savefig(f"validation_performances/{model_name}.png")
-        plt.close()
-    
-    state, _ = load_model(CHECKPOINT_PATH, model_name, state)
-    test_acc = test_model(state, test_dataloader)
-    print((f"Test accuracy: {test_acc:4.2%}").center(50, "=") + "\n")
-    return state, test_acc
-    
-def test_model(state, dataloader):
-    true_preds, count = 0., 0
-    for batch in dataloader:
-        acc = eval_step(state, batch)
-        batch_size = batch[0].shape[0]
-        true_preds += batch_size * acc
-        count += batch_size
-    return true_preds / count
-
-
-for name in act_fn_dict:
-    print(f"Training model with {name} activation function")
-    act_fn = act_fn_dict[name]()
+for i, act_fn_name in enumerate(act_fn_dict):
+    act_fn = act_fn_dict[act_fn_name]()
     net = NN(act_fn)
-    train_model(net, f"FashionMNIST_{name}", overwrite=False)
+    params = net.init(jax.random.key(0), example_batch[0])
+    visualize_gradient(net, params, axes[i], act_fn_name.capitalize(), color=f"C{i}")
+
+for ax in axes[-1]:
+    ax.set_xlabel("Grad magnitude", fontsize=10)
+plt.tight_layout(h_pad=3.0)
+# Save a vector copy (SVG) for crisp scaling and a high-DPI PNG for raster viewers
+plt.savefig("gradient_per_activation_function.svg")
+plt.savefig("gradient_per_activation_function.png", dpi=600, bbox_inches='tight')
+plt.show()
+
+
+# # Training the model
+# def calculate_loss(params, apply_fn, batch):
+#     imgs, labels = batch
+#     logits = apply_fn(params, imgs)
+#     loss = optax.softmax_cross_entropy_with_integer_labels(logits, labels).mean()
+#     acc = (labels == logits.argmax(axis=-1)).mean()
+#     return loss, acc
+
+# @jax.jit
+# def train_step(state, batch):
+#     (_, acc), grads = jax.value_and_grad(calculate_loss, has_aux=True)(state.params, state.apply_fn, batch)
+#     state = state.apply_gradients(grads=grads)
+#     return state, acc
+
+# @jax.jit
+# def eval_step(state, batch):
+#     _, acc = calculate_loss(state.params, state.apply_fn, batch)
+#     return acc
+
+
+# def train_model(net, model_name, max_epochs=50, patience=7, batch_size=256, overwrite=False):
+#     file_exists = os.path.isfile(_get_model_file(CHECKPOINT_PATH, model_name))
+#     if file_exists and not overwrite:
+#         print("Model already trained, skipping training")
+#         state = None
+#     else:
+#         if file_exists:
+#             print("Overwriting model...")
+        
+#         params = net.init(jax.random.key(42), example_batch[0])
+#         state = train_state.TrainState.create(apply_fn=net.apply, params=params, tx=optax.sgd(learning_rate=1e-2, momentum=0.9))
+        
+#         train_local_dataloader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, collate_fn=numpy_collate, generator=torch.Generator().manual_seed(42))
+                
+#         val_scores = []
+#         best_val_epoch = -1
+        
+        
+#         for epoch in range(max_epochs):
+            
+#             # Training
+#             train_acc = 0.
+#             for batch in tqdm(train_local_dataloader, desc=f"Epoch {epoch+1}", leave=False):
+#                 state, acc = train_step(state, batch)
+#                 train_acc += acc
+#             train_acc /= len(train_local_dataloader)
+            
+#             # Validation
+#             val_acc = test_model(state, val_dataloader)
+#             val_scores.append(val_acc)
+#             print(f"[Epoch {epoch+1:2d}] Training accuracy: {train_acc:4.2%}, Validation accuracy: {val_acc:4.2%}")
+            
+#             if len(val_scores)==1 or val_acc > val_scores[best_val_epoch]:
+#                 save_model(net, state.params, CHECKPOINT_PATH, model_name)
+#                 best_val_epoch = epoch
+#             elif best_val_epoch <= epoch - patience:
+#                 print("Early Stopping triggered")
+#                 break
+            
+#         # Plot curve
+#         plt.plot([i for i in range(1, len(val_scores)+1)], val_scores)
+#         plt.xlabel("Epochs")
+#         plt.ylabel("Validation accuracy")
+#         plt.title(f"Validation performance of {model_name}")
+#         plt.savefig(f"validation_performances/{model_name}.png")
+#         plt.close()
+    
+#     state, _ = load_model(CHECKPOINT_PATH, model_name, state)
+#     test_acc = test_model(state, test_dataloader)
+#     print((f"Test accuracy: {test_acc:4.2%}").center(50, "=") + "\n")
+#     return state, test_acc
+    
+# def test_model(state, dataloader):
+#     true_preds, count = 0., 0
+#     for batch in dataloader:
+#         acc = eval_step(state, batch)
+#         batch_size = batch[0].shape[0]
+#         true_preds += batch_size * acc
+#         count += batch_size
+#     return true_preds / count
+
+
+# for name in act_fn_dict:
+#     print(f"Training model with {name} activation function")
+#     act_fn = act_fn_dict[name]()
+#     net = NN(act_fn)
+#     train_model(net, f"FashionMNIST_{name}", overwrite=False)
+
+net_relu = NN(act_fn=ReLU(), )
+measure_num_dead_neurons()

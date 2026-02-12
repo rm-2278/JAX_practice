@@ -26,5 +26,5 @@ Compared different activation functions.
 
 We can observe below that gradient when using sigmoid quickly dimishes as the layer goes higher up (due to the 1/4 limit), while ReLU has the spike at 0 (due to the negative side).
 
-<img src="ActivationFunctions/gradient_per_activation_function.png" alt="Activation Function Gradients" width="800"/>
+<img src="ActivationFunctions/gradient_per_activation_function.svg" alt="Activation Function Gradients" width="800"/>
 <p><em>Figure: plot of the weight of gradients for each layer of different activation functions.</em></p>
