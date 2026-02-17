@@ -19,7 +19,7 @@ from visualization import Tanh, Sigmoid, ReLU, LeakyReLU, ELU, Swish
 
 
 DATASET_PATH = '../data'
-CHECKPOINT_PATH = '../checkpoints'
+CHECKPOINT_PATH = '../checkpoints/activation_function'
 
 
 def _get_config_file(model_path, model_name):
