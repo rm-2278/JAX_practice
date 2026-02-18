@@ -1,5 +1,5 @@
 from typing import Callable, Sequence
-import flax.linen as nn
+from flax import linen as nn
 
 class BaseNN(nn.Module):
     act_fn: Callable
@@ -8,7 +8,7 @@ class BaseNN(nn.Module):
     kernel_init: Callable = nn.linear.default_kernel_init
     
     @nn.compact
-    def __call__(self, return_activation = False):
+    def __call__(self, x, return_activation = False):
         x = x.reshape(x.shape[0], -1)        
         activations = []
         for hid in self.hidden_dim:

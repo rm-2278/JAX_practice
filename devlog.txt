@@ -20,3 +20,5 @@ Feb 9: Learnt tracing. Created Activation Function folder. Visualised activation
 Feb 10: Learnt stateful computations. Visualised the gradient flow for each activation function.
 Feb 11: Learnt key concepts from JAX docs. Created the training loop for each activation function.
 Feb 12: Finished off with the activation function by finding dead neurons.
+Feb 17: Started optimizers.
+Feb 18: Visualized exploding and vanishing activation/gradient in identity activation function.

@@ -82,7 +82,18 @@ act_fn_by_name = {
 }
 
 def plot_dists(val_dict, color, xlabel, stat="count", use_kde=True):
-    assert "NOt implemented"
+    columns = len(val_dict)
+    fig, ax = plt.subplots(1, columns, figsize=(columns*3, 2.5))
+    fig_index = 0
+    for key in sorted(val_dict.keys()):
+        key_ax = ax[fig_index % columns]
+        sns.histplot(val_dict[key], ax=key_ax, color=color, bins=50, stat=stat, kde=use_kde and (val_dict[key].max() - val_dict[key].min()) > 1e-8)
+        key_ax.set_title(f"{key}" + (r"(%i $\to$ %i)" % (val_dict[key].shape[1], val_dict[key].shape[0]) if len(val_dict[key].shape)>1 else ""))
+        if xlabel is not None:
+            key_ax.set_xlabel(xlabel)
+        fig_index += 1
+    fig.subplots_adjust(wspace=0.4)
+    return fig
 
 def vizualize_weights(params, color="C0"):
     params, _ = jax.tree_util.tree_flatten(params)
@@ -92,7 +103,7 @@ def vizualize_weights(params, color="C0"):
     
     fig = plot_dists(weights, color=color, xlabel="Weight values")
     fig.suptitle("Weight distribution", y=1.05)
-    plt.savefig('/image')
+    plt.savefig('image/weight_distribution.png')
     plt.show()
     plt.close()
     
@@ -113,7 +124,7 @@ def visualize_gradient(net, params, color="C0", print_variance=False):
 
     fig = plot_dists(grads, color=color, xlabel="Gradient magnitude")
     fig.suptitle("Gradient distribution", y=1.05)
-    plt.savefig("/images")
+    plt.savefig("images/gradient_distribution.png")
     plt.show()
     plt.close()
     
@@ -122,4 +133,39 @@ def visualize_gradient(net, params, color="C0", print_variance=False):
             print(f"{key} Variance: {np.var(grads[key])}")
 
 def visualize_activations(net, params, color="C0", print_variance=False):
-    assert "Not implemented"
+    _, activations = net.apply(params, example_images, return_activation=True)
+    activations = {f"Layer {layer_idx*2}": act.reshape(-1) for layer_idx, act in enumerate(activations[::2])}
+    
+    fig = plot_dists(activations, color=color, stat="density", xlabel="Activation vals")
+    fig.suptitle("Activation distribution", y=1.05)
+    plt.savefig("images/activation_distribution.png")
+    plt.show()
+    plt.close()
+    
+    
+    if print_variance:
+        for key in sorted(activations.keys()):
+            print(f"{key} Variance: {np.var(activations[key])}")
+
+
+def init_simple_model(kernel_init, act_fn=act_fn_by_name["identity"]):
+    model = BaseNN(act_fn=act_fn, kernel_init=kernel_init)
+    params = model.init(random.key(42), example_images)
+    return model, params
+
+def get_const_init_func(c=0.0):
+    return lambda key, shape, dtype: c*jnp.ones(shape, dtype=dtype)
+
+# # Will give the same gradient for all nodes in intermediate layers
+# model, params = init_simple_model(get_const_init_func(0.005))
+# visualize_gradient(model, params)
+# visualize_activations(model, params, print_variance=True)
+
+# 0.01 will give vanishing activation, 0.1 will give exploding activation
+# Gradient explosion when std=2.5
+def get_const_var(std=0.1):
+    return lambda key, shape, dtype: std*random.normal(key, shape, dtype=dtype)
+
+model, params = init_simple_model(get_const_var(std=0.1))
+visualize_gradient(model, params)
+visualize_activations(model, params, print_variance=True)
