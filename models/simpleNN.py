@@ -1,5 +1,5 @@
 import jax
-from flax import nnx
+from flax import nnx    # nnx is stateless, rngs increment automatically
 import optax
 
 
@@ -30,7 +30,6 @@ target = jax.random.normal(k1, (10, 4))
 label = jax.random.normal(k2, (10, 2))
 
 for i in range(5):
-    key = nnx.Rngs(dropout=0)
     loss = step(model, optimizer, target, label)
     print(loss)
 
