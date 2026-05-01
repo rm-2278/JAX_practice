@@ -92,6 +92,7 @@ optimizer = nnx.Optimizer(model, optax.adam(3e-4), wrt=nnx.Param)
 key = jax.random.key(1)
 tokens = jax.random.randint(key, (16, 32), minval=0, maxval=VOCAB_SIZE)
 
+# Training loop
 for i in range(10):
     loss = train_step(model, optimizer, tokens)
     print(f"Step: {i} | Loss: {loss:.4f}")
