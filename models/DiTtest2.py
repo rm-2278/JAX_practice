@@ -45,10 +45,10 @@ class DiTBlock(nnx.Module):
         shift_a, scale_a, gate_a = shift_a[:, None, :], scale_a[:, None, :], gate_a[:, None, :]
         shift_m, scale_m, gate_m = shift_m[:, None, :], scale_m[:, None, :], gate_m[:, None, :]
         
-        normed_x = scale_a * (1 + self.norm1(x)) + shift_a
+        normed_x = (1 + scale_a) * self.norm1(x) + shift_a
         x = x + self.attn(normed_x) * gate_a
         
-        normed_x = scale_m * (1 + self.norm2(x)) + shift_m
+        normed_x = (1 + scale_m) * self.norm2(x) + shift_m
         x = x + self.mlp(normed_x) * gate_m
         
         return x
