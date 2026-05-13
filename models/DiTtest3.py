@@ -31,12 +31,12 @@ class DiTBlock(nnx.Module):
         self.norm2 = nnx.LayerNorm(embed_dim, use_bias=False, use_scale=False, rngs=rngs)
         self.mlp = nnx.Sequential(
             nnx.Linear(embed_dim, embed_dim*4, rngs=rngs),
-            lambda x: nnx.gelu(x),
+            nnx.gelu,
             nnx.Linear(embed_dim*4, embed_dim, rngs=rngs)
         )
         
         self.adaLN_modulation = nnx.Sequential(
-            lambda x: nnx.silu(x),
+            nnx.silu,
             nnx.Linear(embed_dim, embed_dim * 6, rngs=rngs)
         )
         
@@ -63,7 +63,7 @@ class DiT(nnx.Module):
         self.t_embed = SinusoidalEmbedding(embed_dim)
         self.t_mlp = nnx.Sequential(
             nnx.Linear(embed_dim, embed_dim, rngs=rngs),
-            lambda x: nnx.silu(x),
+            nnx.silu,
             nnx.Linear(embed_dim, embed_dim, rngs=rngs)
         )
         
