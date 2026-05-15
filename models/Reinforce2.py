@@ -40,15 +40,17 @@ def train_step(model, optimizer, states, actions, returns):
     optimizer.update(model, grad)
     return loss
 
+SEED = 42
+
 env = gym.make('CartPole-v1')
-rngs = nnx.Rngs(42)
-key = jax.random.key(42)
+rngs = nnx.Rngs(SEED)
+key = jax.random.key(SEED)
 
 model = Policy(obs_dim=4, action_dim=2, rngs=rngs)
 optimizer = nnx.Optimizer(model, optax.adam(1e-3), wrt=nnx.Param)
 
 for epoch in range(1, 500+1):
-    state, _ = env.reset()
+    state, _ = env.reset(seed=SEED+epoch)
     states, actions, rewards = [], [], []
     done = False
     
