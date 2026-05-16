@@ -30,6 +30,7 @@ def reinforce_loss(model, states, actions, returns):
     log_probs_action = jnp.take_along_axis(log_probs, actions[:, None], axis=1).squeeze()
     return -jnp.mean(returns * log_probs_action)
 
+@nnx.jit
 def train_step(model, optimizer, states, actions, returns):
     returns_norm = (returns - returns.mean()) / (returns.std() + 1e-8)
     loss, grad = nnx.value_and_grad(reinforce_loss)(model, states, actions, returns_norm)
@@ -47,7 +48,7 @@ optimizer = nnx.Optimizer(model, optax.adam(1e-3), wrt=nnx.Param)
 env = gym.make('CartPole-v1')
 
 for epoch in range(1, 500+1):
-    state, _ = env.reset(seed=SEED)
+    state, _ = env.reset(seed=SEED+epoch)
     states = []
     actions = []
     rewards = []
@@ -67,13 +68,13 @@ for epoch in range(1, 500+1):
         state = next_state
         
     states = jnp.stack(states)
-    actions = jnp.array(actions)
+    actions = jnp.asarray(actions, dtype=jnp.int32)
     returns = compute_returns(jnp.array(rewards, dtype=jnp.float32))
 
     loss = train_step(model, optimizer, states, actions, returns)
     
     if epoch % 50 == 0:
-        print(f"Epoch: {epoch} | Eplength: {len(returns)} | Loss: {loss:.3f}")
+        print(f"Epoch: {epoch} | Eplength: {len(returns)} | Loss: {float(loss):.3f}")
 
     
         
