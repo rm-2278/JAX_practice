@@ -4,7 +4,16 @@ from flax import nnx
 import optax
 import gymnasium as gym
 
-#
+"""
+REINFORCE Gradient: By the log-derivative trick, the objective gradient is $\nabla_\theta J(\theta) = \mathbb{E}_{\tau} [\sum_{t=0}^T \nabla_\theta \log \pi_\theta(a_t|s_t) R(\tau)]$.
+Variance Reduction: Subtracting a baseline $b$ shrinks gradient variance without adding bias, since $\mathbb{E}_{a}[b \nabla_\theta \log \pi_\theta(a|s)] = 0$.
+XLA Loop Optimization: Discounted returns $G_t = r_t + \gamma G_{t+1}$ are computed backward using jax.lax.scan to prevent massive JIT graph unrolling.
+Ascent via Descent: To maximize expected return $J(\theta)$ with standard minimizers, we optimize the negative loss: $\theta_{new} = \theta_{old} - \alpha \nabla_\theta (-J(\theta))$.
+Pure Functional State: JAX ensures deterministic execution by explicitly splitting PRNG keys (jax.random.split) rather than mutating global state.
+JIT Execution Boundaries: The environment loop (env.step) remains uncompiled because XLA cannot parse external Python/C++ side-effects.
+Numerical Stability: nnx.log_softmax avoids $e^x$ overflow/underflow via the Log-Sum-Exp trick: $\log(\text{Softmax}(x_i)) = x_i - \log(\sum_j e^{x_j})$.
+"""
+
 
 class Policy(nnx.Module):
     def __init__(self, obs_dim, act_dim, rngs):
