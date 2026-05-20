@@ -9,14 +9,15 @@ class ContinuousActorCritic(nnx.Module):
     def __init__(self, obs_dim, act_dim, rngs):
         self.shared = nnx.Linear(obs_dim, 128, rngs=rngs)
         self.mu_head = nnx.Linear(128, act_dim, rngs=rngs)
+        self.unshared = nnx.Linear(obs_dim, 128, rngs=rngs)
         self.value_head = nnx.Linear(128, 1, rngs=rngs)
         
         self.log_std = nnx.Param(jnp.zeros(act_dim))
         
-    def __call__(self, x):
-        x = nnx.relu(self.shared(x))
+    def __call__(self, inp):
+        x = nnx.relu(self.shared(inp))
         mu = self.mu_head(x)
-        value = self.value_head(x).squeeze()
+        value = self.value_head(nnx.relu(self.unshared(inp))).squeeze()
         return mu, self.log_std.get_value(), value
 
 @nnx.jit
@@ -25,6 +26,9 @@ def select_action(model, state, key):
     std = jnp.exp(log_std)
     
     action = mu + std * jax.random.normal(key, shape=mu.shape)
+    
+    action_squashed = jnp.tanh(action)
+    action = action_squashed * ACT_SCALE + ACT_BIAS
     return action, value
 
 @nnx.jit
@@ -45,8 +49,17 @@ def a2c_loss(model, states, actions, advantages, returns):
     mu, log_std, values = model(states)
     variance = jnp.exp(2 * log_std)
     
+    eps = 1e-6
+    y = (actions - ACT_BIAS) / ACT_SCALE
+    y = jnp.clip(y, -1.0 + eps, 1.0 - eps)
+    actions = jnp.arctanh(y)
+    
     log_prob = -0.5 * (((actions - mu)**2) / variance + jnp.log(variance) + jnp.log(2 * jnp.pi))
     log_probs = jnp.sum(log_prob, axis=-1)
+    
+    log_det_jac = jnp.sum(jnp.log(ACT_SCALE) + jnp.log(1.0 - y**2 + eps), axis=-1)
+
+    log_probs = log_probs - log_det_jac
     
     pi_loss = -jnp.mean(log_probs * advantages)
     
@@ -70,8 +83,13 @@ key = jax.random.key(42)
 obs_dim = env.observation_space.shape[0]
 act_dim = env.action_space.shape[0]
 
+ACT_LOW = jnp.asarray(env.action_space.low, dtype=jnp.float32)
+ACT_HIGH = jnp.asarray(env.action_space.high, dtype=jnp.float32)
+ACT_SCALE = (ACT_HIGH - ACT_LOW) / 2.0
+ACT_BIAS = (ACT_HIGH + ACT_LOW) / 2.0
+
 model = ContinuousActorCritic(obs_dim, act_dim, rngs)
-optimizer = nnx.Optimizer(model, optax.adam(1e-4), wrt=nnx.Param)
+optimizer = nnx.Optimizer(model, optax.adam(3e-4), wrt=nnx.Param)
 
 epochs = 2000
 steps_per_epoch = 200
@@ -89,7 +107,7 @@ for epoch in range(epochs):
         state_f = jnp.asarray(state, dtype=jnp.float32)
         
         action, value = select_action(model, state_f, subkey)
-        env_action = np.clip(np.array(action), env.action_space.low, env.action_space.high)
+        env_action = np.array(action, dtype=np.float32)
         
         next_state, reward, term, trunc, _ = env.step(env_action)
         done = term or trunc
@@ -117,7 +135,7 @@ for epoch in range(epochs):
     if last_done:
         next_value = jnp.array(0.0, dtype=batch_values.dtype)
     else:
-        _, _, next_value = model(jnp.asarray(state, dtype=jnp.float32))
+        _, _, next_value = model(jnp.asarray(last_next_state, dtype=jnp.float32))
     
     advantages, returns = compute_gae(batch_rewards, batch_values, batch_dones, next_value)
     
