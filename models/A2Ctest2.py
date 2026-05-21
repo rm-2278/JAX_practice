@@ -17,7 +17,7 @@ class ContinuousActorCritic(nnx.Module):
         
     def __call__(self, x):
         mu = self.mu(nnx.relu(self.dense1(x)))
-        value = self.value(nnx.relu(self.dense2(x)))
+        value = self.value(nnx.relu(self.dense2(x))).squeeze()
         
         return mu, self.logstd.get_value(), value
     
@@ -40,6 +40,7 @@ def compute_gae(rewards, values, dones, next_value, gamma=0.99, lam=0.95):
         return gae, gae
     
     _, advantages = jax.lax.scan(step, 0.0, [deltas[::-1], dones[::-1]])
+    advantages = advantages[::-1]
     return advantages, advantages + values[:-1]
 
 def a2c_loss(model, states, actions, advantages, returns):
@@ -49,7 +50,7 @@ def a2c_loss(model, states, actions, advantages, returns):
     log_prob = -0.5 * ((actions - mu)**2 / variance + jnp.log(variance) + jnp.log(2 * jnp.pi))
     log_probs = jnp.sum(log_prob, axis=-1)
     
-    pi_loss = 0.5 * jnp.mean(log_probs * advantages)
+    pi_loss = -jnp.mean(log_probs * advantages)
     
     v_loss = 0.5 * jnp.mean((values - returns)**2)
     
