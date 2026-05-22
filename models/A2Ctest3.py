@@ -29,14 +29,14 @@ def select_action(model, state, key):
 @nnx.jit
 def compute_gae(rewards, values, dones, next_value, gamma=0.99, lam=0.95):
     values = jnp.append(values, next_value)
-    deltas = rewards + gamma * values[1:] * (1 - done) - values[:-1]
+    deltas = rewards + gamma * values[1:] * (1 - dones) - values[:-1]
     def step(carry, args):
         delta, done = args
         gae = delta + gamma * lam * carry * (1 - done)
         return gae, gae
     _, advantages = jax.lax.scan(step, 0.0, [deltas[::-1], dones[::-1]])
     advantages = advantages[::-1]
-    return advantages, advantages + values
+    return advantages, advantages + values[:-1]
 
 def a2c_loss(model, states, actions, advantages, returns):
     mu, logstd, values = model(states)
@@ -66,8 +66,8 @@ def train_step(model, optimizer, states, actions, advantages, returns):
 env = gym.make("Pendulum-v1")
 rngs = nnx.Rngs(42)
 key = jax.random.key(42)
-print(env.observation_space.shape, env.action_space.shape)
-model = ContinuousActorCritic(obs_dim=env.observation_space.shape[0], act_dim=env.observation_space.shape[0])
+# print(env.observation_space.shape, env.action_space.shape)
+model = ContinuousActorCritic(obs_dim=env.observation_space.shape[0], act_dim=env.action_space.shape[0], rngs=rngs)
 optimizer = nnx.Optimizer(model, optax.adam(3e-4), wrt=nnx.Param)
 
 state, _ = env.reset()
@@ -92,6 +92,8 @@ for epoch in range(epochs):
         values.append(value)
         dones.append(done)
         
+        state = next_state
+        
         ep_return += reward
         if done:
             state, _ = env.reset()
@@ -102,7 +104,9 @@ for epoch in range(epochs):
     batch_values = jnp.array(values)
     batch_dones = jnp.array(dones, dtype=jnp.float32)
     
-    
+    _, _, next_value = model(state)
+    advantages, returns = compute_gae(batch_rewards, batch_values, batch_dones, next_value)
+    loss = train_step(model, optimizer, batch_states, batch_actions, advantages, returns)
     
     if epoch % 50 == 0:
         print(f"Epoch: {epoch} | Return: {ep_return} | Loss: {loss}")
