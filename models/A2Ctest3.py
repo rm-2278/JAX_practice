@@ -83,7 +83,7 @@ for epoch in range(epochs):
         key, subkey = jax.random.split(key)
         state_f = jnp.asarray(state, dtype=jnp.float32)
         action, value = select_action(model, state_f, subkey)
-        next_state, reward, term, trunc, _ = env.step(action)
+        next_state, reward, term, trunc, _ = env.step(action)   # gym automatically clips
         done = term or trunc
         
         states.append(state_f)
