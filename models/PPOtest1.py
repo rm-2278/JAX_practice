@@ -20,40 +20,40 @@ class PPO(nnx.Module):
         self.logstd = nnx.Param(jnp.zeros(act_dim))
     
     def __call__(self, x):
-        return self.actor(x), self.logstd.get_value(), self.critic(x)
+        return self.actor(x), self.logstd.get_value(), self.critic(x).squeeze(-1)
     
 @nnx.jit
 def select_action(model, state, key):
     mu, logstd, value = model(state)
     std = jnp.exp(logstd)
-    action = mu + std + jax.random.normal(key, mu.shape)
-    log_prob = -0.5 * (((action - mu) / 2 )**2 + jnp.log(2.0 * jnp.pi) + 2.0 * logstd)
+    action = mu + std * jax.random.normal(key, shape=mu.shape)
+    log_prob = -0.5 * (((action - mu) / std) ** 2 + 2.0 * logstd + jnp.log(2.0 * jnp.pi))
     return action, jnp.sum(log_prob, axis=-1), value
 
 @nnx.jit
-def compute_gae(rewards, values, next_values, termination, truncation, gamma=0.99, lam=0.95):
-    episode_ends = jnp.logical_or(termination, truncation)
+def compute_gae(rewards, values, next_values, terminations, truncations, gamma=0.99, lam=0.95):
+    episode_ends = jnp.logical_or(terminations, truncations)
     
-    deltas = rewards + next_values * gamma * (1 - termination) - values
+    deltas = rewards + next_values * gamma * (1. - terminations.astype(jnp.float32)) - values
     def step(gae, args):
         delta_t, episode_end_t = args
-        adv = delta_t + gamma * lam * gae * (1.0 - episode_end_t)
+        adv = delta_t + gamma * lam * gae * (1.0 - episode_end_t.astype(jnp.float32))
         return adv, adv
-    _, advantages = jax.lax.scan(step, 0.0, [deltas[::-1], episode_ends[::-1]])
+    _, advantages = jax.lax.scan(step, 0.0, (deltas[::-1], episode_ends[::-1]))
     advantages = advantages[::-1]
     return advantages, advantages + values
 
 def ppo_loss(model, states, actions, old_log_probs, advantages, returns):
     mu, logstd, values = model(states)
     std = jnp.exp(logstd)
-    log_probs = jnp.sum(-0.5 * (((actions - mu) / 2 )**2 + jnp.log(2.0 * jnp.pi) + 2.0 * logstd), axis=-1)
+    log_probs = jnp.sum(-0.5 * (((actions - mu) / std) ** 2 + 2.0 * logstd + jnp.log(2.0 * jnp.pi)), axis=-1)
     ratio = jnp.exp(log_probs - old_log_probs)
     
     pi_loss = -jnp.mean(jnp.minimum(ratio * advantages, jnp.clip(ratio, 0.8, 1.2) * advantages))
     v_loss = 0.5 * jnp.mean((values - returns)**2)
-    entropy = 0.5 * jnp.mean(jnp.sum(0.5 * (1.0 + jnp.log(2.0 * jnp.pi)) + logstd, axis=-1))
+    entropy = jnp.mean(jnp.sum(0.5 * (1.0 + jnp.log(2.0 * jnp.pi)) + logstd, axis=-1))
     
-    return pi_loss + v_loss - 0.01 * entropy
+    return pi_loss + 0.5 * v_loss - 0.01 * entropy
 
 @nnx.jit
 def train_step(model, optimizer, batch):
@@ -74,7 +74,7 @@ for epoch in range(1000):
     
     for _ in range(1000):
         key, subkey = jax.random.split(key)
-        action, log_prob, value = select_action(model, jnp.array(state, dtype=jnp.float32), key)
+        action, log_prob, value = select_action(model, jnp.array(state, dtype=jnp.float32), subkey)
 
         env_action = np.clip(np.array(action), -2.0, 2.0)
         next_state, reward, term, trunc, _ = env.step(env_action)
@@ -119,8 +119,8 @@ for epoch in range(1000):
             mb_idx = indices[start:start+250]
             mb = {k: v[mb_idx] for k, v in full_batch.items()}
             loss = train_step(model, optimizer, mb)
-            
-        if epoch % 10 == 0 and eps > 0:
-             print(f"Epoch: {epoch} | Avg Return: {total_return/eps:.1f} | Loss: {float(loss):.3f}")
+        
+    if epoch % 10 == 0 and eps > 0:
+            print(f"Epoch: {epoch} | Avg Return: {total_return/eps:.1f} | Loss: {float(loss):.3f}")
         
         
