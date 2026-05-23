@@ -31,7 +31,7 @@ def select_action(model, state, key):
     return action, jnp.sum(log_prob, axis=-1), value
 
 @jax.jit
-def compute_gae(rewards, values, next_values, terminations, truncations, next_val):
+def compute_gae(rewards, values, next_values, terminations, truncations):
     episode_ends = jnp.logical_or(terminations, truncations)
 
     deltas = rewards + 0.99 * next_values * (1.0 - terminations.astype(jnp.float32)) - values
@@ -52,7 +52,7 @@ def ppo_loss(model, states, actions, old_log_probs, advantages, returns):
     log_probs = jnp.sum(-0.5 * (((actions - mu) / std) ** 2 + 2.0 * log_std + jnp.log(2.0 * jnp.pi)), axis=-1)
     ratio = jnp.exp(log_probs - old_log_probs)
     
-    pi_loss = -jnp.mean(jnp.minimum(ratio * advantages, jnp.clip(ratio, 0.8, 1.2) * advantages))
+    pi_loss = -jnp.mean(jnp.minimum(ratio * advantages, jnp.clip(ratio, 0.8, 1.2) * advantages))    # minimum enforce clipping only when ratio and adv in same direction
     v_loss = 0.5 * jnp.mean((values - returns) ** 2)
     entropy = jnp.mean(jnp.sum(0.5 * (1.0 + jnp.log(2.0 * jnp.pi)) + log_std, axis=-1))
     
@@ -108,7 +108,6 @@ def train():
             next_values,
             jnp.array(terminations, dtype=jnp.bool_),
             jnp.array(truncations, dtype=jnp.bool_),
-            0.0,
         )
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
         
