@@ -1,3 +1,5 @@
+# gelu converges fastest, but best long-term performance was relu
+
 import jax
 import jax.numpy as jnp
 from flax import nnx
