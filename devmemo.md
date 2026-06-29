@@ -17,7 +17,7 @@ Also, blog tutorial. Go make the passing function.
 In UVA tutorial, continue.
 Also, in parallel, do flax tutorial (maybe leave it later).
 
-Goal is to create a simple AE (done!) -> VAE -> Actor-Critic -> world model.
+Goal is to create a simple AE (done) -> VAE (done) -> Actor-Critic (done) -> world model.
 
 
 
