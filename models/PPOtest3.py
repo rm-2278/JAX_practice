@@ -15,7 +15,7 @@ class PPO(nnx.Module):
         self.critic = nnx.Sequential(
             nnx.Linear(obs_dim, 64, rngs=rngs),
             nnx.gelu,
-            nnx.Linear(64, act_dim, rngs=rngs)
+            nnx.Linear(64, 1, rngs=rngs)
         )
         self.logstd = nnx.Param(jnp.zeros(act_dim))
         
@@ -56,7 +56,7 @@ def ppo_loss(model: PPO, states, actions, old_log_probs, advantages, returns):
 @nnx.jit
 def train_step(model, optimizer, states, actions, advantages, old_log_probs, returns):
     loss, grads = nnx.value_and_grad(ppo_loss)(model, states, actions, old_log_probs, advantages, returns)
-    optimizer.step(model, grads)
+    optimizer.update(model, grads)
     return loss
 
 rngs= nnx.Rngs(42)
